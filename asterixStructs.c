@@ -87,3 +87,106 @@ __uint8_t mode1_code_conf_ind(char quality[5]) {
     }
     return result;
 }
+
+__uint16_t mode3_code_oct_repr(__uint16_t v, __uint16_t g, __uint16_t l, __uint16_t mode3) {
+    return (v << 15) | (g << 14) | (l << 13) | mode3;
+}
+
+__uint16_t mode3_code_conf_ind(char quality[12]) {
+    __uint16_t result = 0;
+    for (int i = 0; i < 12; i++) {
+        result = result | (quality[i] << (11 - i));
+    }
+    return result;
+}
+
+__uint16_t flight_level_bin_repr(__uint16_t v, __uint16_t g, __uint16_t flight_level) { // Not sure as flight_level is coded on 14 bits
+    return (v << 15) | (g << 14) | flight_level;
+}
+
+__uint32_t modec_code_conf_ind(__uint32_t v, __uint32_t g, __uint32_t modec, __uint32_t quality[12]) {
+    __uint32_t result = 0;
+    for (int i = 0; i < 12; i++) {
+        result = result | (quality[i] << (11 - i));
+    }
+    return (v << 31) | (g << 30) | (modec << 16) | result;
+}
+
+__uint16_t height_measured_3d_radar(__uint16_t height) {
+    return height ^ 0xC000; // Force bits 16 and 15 to be null
+}
+
+__uint8_t radial_doppler_speed_prim_sub(__uint8_t cal, __uint8_t rds, __uint8_t fx) { // Primary subfield, maybe followed by another subfiled, see FX value
+    return (cal << 7) | (rds << 6) | fx;
+}
+
+__uint16_t radial_doppler_speed_calc_doppler_speed(__uint8_t d, __uint16_t cal) {
+    return (d << 15) | cal;
+}
+
+
+__uint8_t *radial_doppler_speed_raw_doppler_speed(__uint8_t rep, __uint16_t dop, __uint16_t amb, __uint16_t frq) {
+    __uint8_t result[7] = malloc(7);
+    result[0] = rep;
+    result[1] = dop;
+    result[3] = amb;
+    result[5] = frq;
+    return result;
+}
+
+// radar plot char : too long to code now, skip
+
+__uint8_t *time_of_day(__uint8_t time[3]) {
+    return time;
+}
+
+__uint16_t track_number(__uint16_t trck_nb) {
+    return trck_nb;
+}
+
+//track status, 2 parts
+
+__uint8_t track_status_prime(__uint8_t cnf, __uint8_t rad, __uint8_t dou, __uint8_t mah, __uint8_t cdm, __uint8_t fx)  {
+    return (cnf << 7) | (rad << 6) | (dou << 4) | (mah << 3) | (cdm << 2) | fx;
+}
+
+__uint8_t track_status_extent(__uint8_t tre, __uint8_t gho, __uint8_t sup, __uint8_t tcc, __uint8_t fx) {
+    return (tre << 7) | (gho << 6) | (sup << 5) | (tcc << 4) | fx;
+}
+
+__uint32_t calc_track_velocity_polar_coord(__uint16_t groundspeed, __uint16_t heading) {
+    return (groundspeed << 16) | heading;
+}
+
+__uint32_t track_quality(__uint8_t sigmaX, __uint8_t sigmaY, __uint8_t sigmaV, __uint8_t sigmaH) {
+    return (sigmaX << 24) | (sigmaY << 16) | (sigmaV << 8) | sigmaH;
+}
+
+__uint8_t *aircraft_address(__uint32_t modeS_adress) {
+    __uint8_t *result = malloc(3);
+    result[0] = (modeS_adress >> 16) & 0xFF;
+    result[1] = (modeS_adress >> 8) & 0xFF;
+    result[2] = modeS_adress & 0xFF;
+    return result;
+}
+
+__uint16_t comm_acas_capability_flight_status(__uint8_t com, __uint8_t stat, __uint8_t si, __uint8_t mssc, __uint8_t arc, __uint8_t aic, __uint8_t b1a, __uint8_t b1b) {
+    __uint16_t result =  (com << 15) | (stat << 12) | (si << 9) | (mssc << 7) | (arc << 6) | (aic << 5) | (b1a << 4) | b1b;
+    result &= 0xFEFF; // We put 0 in bit 9
+    return result;
+}
+
+
+__uint8_t *aircraft_id(__uint8_t character[8] ) { // Don't know how to code on 6 bits
+    __uint8_t *result = malloc(6);
+
+}
+
+__uint8_t *acas_resolution_advisory_report( __uint8_t acasra[7]) {
+    __uint8_t *result = malloc(7);
+    for (int i = 0; i < 7; i++) {
+        result[i] = acasra[i];
+    }
+    return result;
+}
+
