@@ -56,6 +56,10 @@ typedef struct {
     int result;
 } measured_position_polar;
 
+__uint16_t data_source_id(__uint8_t sac, __uint8_t sic) {
+    return (sac << 8) | sic;
+}
+
 __uint32_t measured_position_polar(__uint32_t rho, __uint32_t theta) {
     return (rho << 16) | theta;
 }
