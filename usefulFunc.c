@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 #define DATA_SOURCE_IDENTIFIER 1 //
 #define TARGET_REPORT_DESCRIPTOR 2
@@ -9,7 +10,7 @@
 #define MODE2_CODE_OCT_REPR 6
 #define MODE1_CODE_OCT_REPR 7
 #define MODE2_CODE_CONF_IND 8
-#define MODE2_CODE_CONF_IND 9
+#define MODE1_CODE_CONF_IND 9
 #define MODE3_CODE_OCT_REPR 10
 #define MODE3_CODE_CONF_IND 11
 #define FLIGHT_LEVEL_BIN_REPR 12
@@ -30,23 +31,25 @@
 
 #define SIZE_ALL_DATA_FIELDS 20 // Static size, as we know which data fields will be in each of our records
 
-// Function definition for creating usefull Data Item
+//////////////////// Function definition for creating usefull Data Item ///////////////////////////////////////
 
-__uint16_t data_source_id(__uint8_t sac, __uint8_t sic) {
+__uint16_t data_source_id(__uint8_t sac, __uint8_t sic) { // ok, we have args, and it works
     return (sac << 8) | sic;
 }
 
-__uint32_t calc_position_cart_coord(__uint32_t X, __uint32_t Y) {
+__uint32_t calc_position_cart_coord(__uint32_t X, __uint32_t Y) { // We have to calculate them but ok, it works
     return (X << 16) | Y;
 }
 
-__uint16_t height_measured_3d_radar(__uint16_t height) {
-    return height ^ 0xC000; // Force bits 16 and 15 to be null
+__uint16_t height_measured_3d_radar(__uint16_t height) { // ok, it works
+    return height & 0x3FFF; // Force bits 16 and 15 to be null
 }
 
-__uint16_t track_number(__uint16_t trck_nb) {
+__uint16_t track_number(__uint16_t trck_nb) { // I have to ask what it is, it works too
     return trck_nb;
 }
+
+// radar plot char : too long to code now, skip, and optional :)
 
 __uint8_t track_status_prime(__uint8_t cnf, __uint8_t rad, __uint8_t dou, __uint8_t mah, __uint8_t cdm, __uint8_t fx)  {
     return (cnf << 7) | (rad << 6) | (dou << 4) | (mah << 3) | (cdm << 2) | fx;
@@ -56,15 +59,17 @@ __uint8_t track_status_extent(__uint8_t tre, __uint8_t gho, __uint8_t sup, __uin
     return (tre << 7) | (gho << 6) | (sup << 5) | (tcc << 4) | fx;
 }
 
-__uint32_t calc_track_velocity_polar_coord(__uint16_t groundspeed, __uint16_t heading) {
+__uint32_t calc_track_velocity_polar_coord(__uint16_t groundspeed, __uint16_t heading) { // ok, just convert
     return (groundspeed << 16) | heading;
 }
 
-__uint32_t track_quality(__uint8_t sigmaX, __uint8_t sigmaY, __uint8_t sigmaV, __uint8_t sigmaH) {
+__uint32_t track_quality(__uint8_t sigmaX, __uint8_t sigmaY, __uint8_t sigmaV, __uint8_t sigmaH) { // I have to ask
     return (sigmaX << 24) | (sigmaY << 16) | (sigmaV << 8) | sigmaH;
 }
 
-// FSPEC definition
+
+/////////////////////////////// FSPEC definition and creation ////////////////////////
+
 
 // We need 4 FSPEC (bytes) to encode DATA FIELD's presence (7 Data Field per byte, one FX bit)
 // For this version, I suppose the field presence is constant, so we only need 3 bytes, as no field are set on the last byte
@@ -81,38 +86,80 @@ struct FSPEC *create_FSPEC() { // We can statically indicate the presence of our
     return fspec;
 }
 
+
+///////////////// Record definition : struct and creation /////////////////////////////
+
+
 struct RECORD {
-    struct FSPEC *fspec;
+    struct FSPEC fspec;
     __uint8_t data_fields[SIZE_ALL_DATA_FIELDS];
 };
 
-__uint8_t fill_data_fields() {
 
-}
+// This function args are already formed dataItems, so no need to input the dataItems parameters by hand in this function
 
-struct RECORD *create_record() { // A record is composed of a FSPEC, and some data fields
+struct RECORD *create_record(__uint16_t data_source_id, __uint32_t calc_position_cart_coord, __uint16_t height_measured_3d_radar, __uint16_t track_number, __uint8_t track_status_prime, __uint8_t track_status_extent, __uint32_t calc_track_velocity_polar_coord, __uint32_t track_quality) { // A record is composed of a FSPEC, and some data fields
     struct RECORD *record = (struct RECORD *) malloc(sizeof(struct RECORD));
+    memset(record, 0, sizeof(struct RECORD));
 
     // We add the fspec to our record
     struct FSPEC *fspec = create_FSPEC();
-    record->fspec = fspec;
+    record->fspec = *fspec;
 
     // We now add our data fields to our record
-    record->data_fields[0] = fill_data_fields();
+    //Adding data_source_id to record 
+    record->data_fields[0] = (data_source_id >> 8) & 0xFF;//data_source_id;
+    record->data_fields[1] = data_source_id & 0xFF;
+    // Adding calc_position_cart_coord to record
+    record->data_fields[2] = (calc_position_cart_coord >> 24) & 0xFF;
+    record->data_fields[3] = (calc_position_cart_coord >> 16) & 0xFF;
+    record->data_fields[4] = (calc_position_cart_coord >> 8) & 0xFF;
+    record->data_fields[5] = calc_position_cart_coord & 0xFF;
+
+    // Adding height_measured_3d_radar to record
+    record->data_fields[6] = (height_measured_3d_radar >> 8) & 0xFF;
+    record->data_fields[7] = height_measured_3d_radar & 0xFF;
+
+    // Adding track_number to record
+    record->data_fields[8] = (track_number >> 8) & 0xFF;
+    record->data_fields[9] = track_number & 0xFF;
+
+    // Adding track_status_prime to record
+    record->data_fields[10] = track_status_prime;
+
+    // Adding track_status_extent to record
+    record->data_fields[11] = track_status_extent;
+
+    // Adding calc_track_velocity_polar_coord to record
+    record->data_fields[12] = (calc_track_velocity_polar_coord >> 24) & 0xFF;
+    record->data_fields[13] = (calc_track_velocity_polar_coord >> 16) & 0xFF;
+    record->data_fields[14] = (calc_track_velocity_polar_coord >> 8) & 0xFF;
+    record->data_fields[15] = calc_track_velocity_polar_coord & 0xFF;
+
+    // Adding track_quality to record
+    record->data_fields[16] = (track_quality >> 24) & 0xFF;
+    record->data_fields[17] = (track_quality >> 16) & 0xFF;
+    record->data_fields[18] = (track_quality >> 8) & 0xFF;
+    record->data_fields[19] = track_quality & 0xFF;
 
     return record;
 }
 
+////////////////////////////////////////////// Datablock definition and creation //////////////////////////////////////////////
+
+
 struct DATABLOCK {
-    char cat;  // The CATEGORY of ASTERIX
+    __uint8_t cat;  // The CATEGORY of ASTERIX
     __uint8_t len;  // length of the datablock, including cat and len
-    struct RECORD *record;  // I try with one record only, then I will modify to 5 for instance
+    struct RECORD record;  // I try with one record only, then I will modify to 5 for instance
 };
 
-struct DATABLOCK *create_datablock() {
+struct DATABLOCK *create_datablock(__uint16_t data_source_id, __uint32_t calc_position_cart_coord, __uint16_t height_measured_3d_radar, __uint16_t track_number, __uint8_t track_status_prime, __uint8_t track_status_extent, __uint32_t calc_track_velocity_polar_coord, __uint32_t track_quality) {
+
     struct DATABLOCK *datablock = (struct DATABLOCK *) malloc(sizeof(struct DATABLOCK));
     datablock->cat = 0x30;
     datablock->len = sizeof(struct RECORD) + sizeof(char) + sizeof(__uint16_t);
-    datablock->record = create_record();
+    datablock->record = *create_record(data_source_id, calc_position_cart_coord, height_measured_3d_radar, track_number, track_status_prime, track_status_extent, calc_track_velocity_polar_coord, track_quality);
+
     return datablock;
 }
