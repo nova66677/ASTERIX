@@ -73,25 +73,25 @@ def decode_datablock(datablock):
     )
     print(f"Track Quality: 0x{track_quality:08X}")
 
-# Example usage with ctypes to call the C function (assuming you've loaded the shared library)
-from ctypes import CDLL
-my_lib = CDLL("/home/n0va/Documents/Thales/ASTERIX/usefulFunc.so")
-my_lib.create_datablock.restype = ctypes.POINTER(DATABLOCK)
 
-# Create a DATABLOCK instance (example data)
-data_source_id = 0x0504
-calc_position_cart_coord = 0x12345678
-height_measured_3d_radar = 0x1234
-track_number = 0x5678
-track_status_prime = 0x12
-track_status_extent = 0x34
-calc_track_velocity_polar_coord = 0x87654321
-track_quality = 0x89ABCDEF
+if __name__ == "__main__":
+    # Example usage with ctypes to call the C function (assuming you've loaded the shared library)
+    from ctypes import CDLL
+    my_lib = CDLL("/home/n0va/Documents/Thales/ASTERIX/usefulFunc.so")
+    my_lib.create_datablock.restype = ctypes.POINTER(DATABLOCK)
 
-# Assuming create_datablock is the function to create a datablock
-datablock_ptr = my_lib.create_datablock(data_source_id, calc_position_cart_coord, height_measured_3d_radar, track_number, track_status_prime, track_status_extent, calc_track_velocity_polar_coord, track_quality)
+    # Create a DATABLOCK instance (example data)
+    data_source_id = 0x0504
+    calc_position_cart_coord = 0x12345678
+    height_measured_3d_radar = 0x1234
+    track_number = 0x5678
+    track_status_prime = 0x12
+    track_status_extent = 0x34
+    calc_track_velocity_polar_coord = 0x87654321
+    track_quality = 0x89ABCDEF
 
-# Decode the datablock
-decode_datablock(datablock_ptr.contents)
+    # Assuming create_datablock is the function to create a datablock
+    datablock_ptr = my_lib.create_datablock(data_source_id, calc_position_cart_coord, height_measured_3d_radar, track_number, track_status_prime, track_status_extent, calc_track_velocity_polar_coord, track_quality)
 
-# Note: Uncomment and replace the above lines with actual calls to your C library
+    # Decode the datablock
+    decode_datablock(datablock_ptr.contents)
