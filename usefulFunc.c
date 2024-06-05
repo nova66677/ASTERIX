@@ -1,11 +1,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-
-#define DATA_SOURCE_IDENTIFIER 1 //
+//FSPEC : 10010000000000101000000000
+#define DATA_SOURCE_IDENTIFIER 1 // Needed for json structure encoding
 #define TARGET_REPORT_DESCRIPTOR 2
 #define WARNERR_COND_TGT_CLASSIF 3
-#define MEASURED_POSITION_SPC 4
+#define MEASURED_POSITION_SPC 4 // Needed for json structure encoding
 #define CALC_POSITION_CART_COORD 5 //
 #define MODE2_CODE_OCT_REPR 6
 #define MODE1_CODE_OCT_REPR 7
@@ -16,14 +16,14 @@
 #define FLIGHT_LEVEL_BIN_REPR 12
 #define MODEC_CODE_CONF_IND 13
 #define HEIGHT_MEASURED_3D_RADAR 14 //
-#define RADIAL_DOPPLER_SPEED 15
+#define RADIAL_DOPPLER_SPEED 15 // Needed for json structure encoding
 #define RADAR_PLOT_CHAR 16 //
-#define TIME_DAY 17
+#define TIME_DAY 17 // Needed for json structure encoding
 #define TRACK_PLOT_NUMBER 18 //
 #define TRACK_STATUS 19 //
 #define CALC_TRACK_VELOCITY_POLAR 20 //
 #define TRACK_QUALITY 21 //
-#define AIRCRAFT_ADDRESS 22
+#define AIRCRAFT_ADDRESS 22 
 #define COMM_ACAS_CAPABILITY_FLIGHT_STATUS 23
 #define AIRCRAFT_ID 24
 #define MODE_S_MB_DATA 25
@@ -68,7 +68,48 @@ __uint32_t track_quality(__uint8_t sigmaX, __uint8_t sigmaY, __uint8_t sigmaV, _
 }
 
 
-/////////////////////////////// FSPEC definition and creation ////////////////////////
+
+//////////////////////////////////// Functions definition for proposed translator ////////////////////////////////////////////////:
+
+// Data_source_id already coded
+
+__uint32_t measured_position_polar(__uint32_t rho, __uint32_t theta) {
+    return (rho << 16) | theta;
+}
+
+__uint8_t radial_doppler_speed_prim_sub() { // Primary subfield, maybe followed by another subfiled, see FX value
+    __uint8_t cal = 1;
+    __uint8_t rds = 0;
+    __uint8_t fx = 1;
+    return (cal << 7) | (rds << 6) | fx;
+}
+
+__uint16_t radial_doppler_speed_calc_doppler_speed(__uint16_t cal) {
+    __uint8_t d = 0;
+    return (d << 15) | cal;
+}
+
+// I add a function using both radial_doppler_speed for making data item craft easier
+
+__uint8_t *radial_doppler_speed(__uint16_t cal) {
+    __uint8_t *result = (__uint8_t *) malloc(3 * sizeof(__uint8_t));
+    if (!result) {
+        perror("Failed to allocate memory for radial_doppler_speed");
+        exit(EXIT_FAILURE);
+    }
+    result[0] = radial_doppler_speed_prim_sub();
+    __uint16_t tmp = radial_doppler_speed_calc_doppler_speed(cal);
+    result[1] = tmp >> 8;
+    result[2] = tmp & 0xFF;
+    return result;
+}
+
+
+__uint8_t time_of_day(__uint8_t time) {
+    return time;
+}
+
+////////////////////////////////////////////// FSPEC definition and creation /////////////////////////////////////////////////////
 
 
 // We need 4 FSPEC (bytes) to encode DATA FIELD's presence (7 Data Field per byte, one FX bit)
@@ -161,5 +202,66 @@ struct DATABLOCK *create_datablock(__uint16_t data_source_id, __uint32_t calc_po
     datablock->len = sizeof(struct RECORD) + sizeof(char) + sizeof(__uint16_t);
     datablock->record = *create_record(data_source_id, calc_position_cart_coord, height_measured_3d_radar, track_number, track_status_prime, track_status_extent, calc_track_velocity_polar_coord, track_quality);
 
+    return datablock;
+}
+
+
+///////////////////////////////////////// Datablock creation for proposedTranslator.py //////////////////////////////////////
+
+// Define the RECORD_PT structure
+struct RECORD_PT {
+    struct FSPEC fspec;
+    __uint8_t data_fields[9];  // Adjust the size based on actual data fields
+};
+
+// Define the DATABLOCK_PT structure
+struct DATABLOCK_PT {
+    __uint8_t cat;  // The CATEGORY of ASTERIX
+    __uint8_t len;  // Length of the datablock, including cat and len
+    struct RECORD_PT record;  // Using one record for now
+};
+
+
+// Function to create RECORD_PT
+struct RECORD_PT *create_record_proposedTranslator(__uint16_t data_source_id, __uint32_t measured_position_polar, __uint8_t *radial_doppler_speed, __uint8_t *time_of_day) {
+    struct RECORD_PT *record = (struct RECORD_PT *) malloc(sizeof(struct RECORD_PT));
+    if (!record) {
+        perror("Failed to allocate memory for RECORD_PT");
+        exit(EXIT_FAILURE);
+    }
+    memset(record, 0, sizeof(struct RECORD_PT));
+    
+    struct FSPEC *fspec = create_FSPEC();
+    record->fspec = *fspec;
+    free(fspec);
+    
+    record->data_fields[0] = (__uint8_t)(data_source_id >> 8);
+    record->data_fields[1] = (__uint8_t)(data_source_id & 0xFF);
+    record->data_fields[2] = (__uint8_t)(measured_position_polar >> 24);
+    record->data_fields[3] = (__uint8_t)(measured_position_polar >> 16);
+    record->data_fields[4] = (__uint8_t)(measured_position_polar >> 8);
+    record->data_fields[5] = (__uint8_t)(measured_position_polar & 0xFF);
+    record->data_fields[6] = radial_doppler_speed[0];
+    record->data_fields[7] = radial_doppler_speed[1];
+    record->data_fields[8] = time_of_day[0];
+    
+    return record;
+}
+
+// Function to create DATABLOCK_PT
+struct DATABLOCK_PT *create_datablock_proposedTranslator(__uint16_t data_source_id, __uint32_t measured_position_polar, __uint8_t *radial_doppler_speed, __uint8_t *time_of_day) {
+    struct DATABLOCK_PT *datablock = (struct DATABLOCK_PT *) malloc(sizeof(struct DATABLOCK_PT));
+    if (!datablock) {
+        printf("Failed to allocate memory for DATABLOCK_PT");
+        exit(EXIT_FAILURE);
+    }
+    
+    datablock->cat = 0x30;  // Set category to 48
+    datablock->len = sizeof(struct DATABLOCK_PT);
+    
+    struct RECORD_PT *record = create_record_proposedTranslator(data_source_id, measured_position_polar, radial_doppler_speed, time_of_day);
+    memcpy(&(datablock->record), record, sizeof(struct RECORD_PT));
+    free(record);
+    
     return datablock;
 }

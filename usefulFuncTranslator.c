@@ -79,9 +79,9 @@ struct FSPEC *create_FSPEC() {
         perror("Failed to allocate memory for FSPEC");
         exit(EXIT_FAILURE);
     }
-    fspec->FSPEC[0] = 0x89;
-    fspec->FSPEC[1] = 0x01;
-    fspec->FSPEC[2] = 0x5E;
+    fspec->FSPEC[0] = 0x90;
+    fspec->FSPEC[1] = 0x02;
+    fspec->FSPEC[2] = 0x80;
     return fspec;
 }
 
