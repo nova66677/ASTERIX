@@ -70,8 +70,11 @@ def create_datablock_from_json(data):
         func.free(datablock)
 
     func.free(time_of_day_ptr)
+    
+    return datablock
 
 if __name__ == "__main__":
+
     sac = 5
     sic = 4
     data_source_id = func.data_source_id(sac, sic)
