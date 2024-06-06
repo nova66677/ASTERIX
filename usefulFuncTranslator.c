@@ -20,7 +20,7 @@ struct FSPEC {
 
 struct RECORD_PT {
     struct FSPEC fspec;
-    __uint8_t data_fields[9];  // Adjust the size based on actual data fields
+    __uint8_t data_fields[10];  // Adjust the size based on actual data fields
 };
 
 struct DATABLOCK_PT {
@@ -105,7 +105,8 @@ struct RECORD_PT *create_record_proposedTranslator(__uint16_t data_source_id, __
     record->data_fields[5] = (__uint8_t)(measured_position_polar & 0xFF);
     record->data_fields[6] = radial_doppler_speed[0];
     record->data_fields[7] = radial_doppler_speed[1];
-    record->data_fields[8] = time_of_day[0];
+    record->data_fields[8] = radial_doppler_speed[2];
+    record->data_fields[9] = time_of_day[0];
     
     return record;
 }

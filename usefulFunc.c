@@ -128,7 +128,7 @@ struct FSPEC *create_FSPEC() { // We can statically indicate the presence of our
 }
 
 
-///////////////// Record definition : struct and creation /////////////////////////////
+///////////////////////////////////// Record definition : struct and creation ////////////////////////////////////////////////
 
 
 struct RECORD {
