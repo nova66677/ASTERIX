@@ -57,7 +57,7 @@ def create_datablock_from_json(data):
         # Create the data block
         datablock = func.create_datablock_proposedTranslator(data_source_id, measured_position_polar, radial_doppler_speed_ptr, time_of_day_ptr)
 
-        # Print or handle the datablock
+        # Print or handle the datablock 
         print("CAT:", datablock.contents.cat)
         print("LEN:", datablock.contents.len)
         print("record:")
