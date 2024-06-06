@@ -1,5 +1,8 @@
 from ctypes import *
+from scapy.all import wrpcap, Raw, Ether
 import json
+
+
 # Load the shared library
 so_file = "/home/n0va/Documents/Thales/ASTERIX/usefulFuncTranslator.so"
 func = CDLL(so_file)
@@ -94,6 +97,16 @@ if __name__ == "__main__":
 
     # Create the data block
     datablock = func.create_datablock_proposedTranslator(data_source_id, measured_position_polar, radial_doppler_speed_ptr, time_of_day_ptr)
+    
+    # Trying to save datablock to .pcap file
+    asterix_bytes = bytes(string_at(byref(datablock.contents), sizeof(datablock.contents)))
+    print("taille de datablock : ", len(asterix_bytes))
+    #raw_packet = Raw(load=asterix_bytes)
+    #ether_packet = Ether() / raw_packet
+    with open('datablock.pcap', 'wb') as file:
+        file.write(asterix_bytes)
+    print("Packet saved to asterix_datablock.pcap")
+
 
     # Check the created data block
     print("CAT:", datablock.contents.cat)
