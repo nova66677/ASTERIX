@@ -20,7 +20,7 @@ struct FSPEC {
 
 struct RECORD_PT {
     struct FSPEC fspec;
-    __uint8_t data_fields[10];  // Adjust the size based on actual data fields
+    __uint8_t data_fields[12];  // Adjust the size based on actual data fields
 };
 
 struct DATABLOCK_PT {
@@ -35,7 +35,7 @@ __uint16_t data_source_id(__uint8_t sac, __uint8_t sic) {
 }
 
 __uint32_t measured_position_polar(__uint32_t rho, __uint32_t theta) {
-    return (rho << 16) | theta;
+    return (rho << 16) | (theta & 0xffff)  ;
 }
 
 __uint8_t radial_doppler_speed_prim_sub() {
@@ -64,12 +64,15 @@ __uint8_t *radial_doppler_speed(__uint16_t cal) {
 }
 
 __uint8_t *time_of_day(__uint32_t time) {
-    __uint8_t *result = (__uint8_t *) malloc(sizeof(__uint8_t));
+    __uint8_t *result = (__uint8_t *) malloc(3 * sizeof(__uint8_t));
     if (!result) {
         perror("Failed to allocate memory for time_of_day");
         exit(EXIT_FAILURE);
     }
-    *result = time;
+    result[0] = time >> 16;
+    result[1] = time >> 8;
+    result[2] = time; // By putting a uint32 into uint8 sized memory, it will be troncated to the 8 LSB
+    
     return result;
 }
 
@@ -107,6 +110,8 @@ struct RECORD_PT *create_record_proposedTranslator(__uint16_t data_source_id, __
     record->data_fields[7] = radial_doppler_speed[1];
     record->data_fields[8] = radial_doppler_speed[2];
     record->data_fields[9] = time_of_day[0];
+    record->data_fields[10] = time_of_day[1];
+    record->data_fields[11] = time_of_day[2];
     
     return record;
 }

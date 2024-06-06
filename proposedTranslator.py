@@ -10,7 +10,7 @@ class FSPEC(Structure):
 
 class RECORD_PT(Structure):
     _fields_ = [('fspec', FSPEC),
-                ('data_fields', c_uint8 * 10)]  # Adjust size as needed
+                ('data_fields', c_uint8 * 12)]  # Adjust size as needed
 
 class DATABLOCK_PT(Structure):
     _fields_ = [('cat', c_uint8),
@@ -62,7 +62,7 @@ def create_datablock_from_json(data):
         print("LEN:", datablock.contents.len)
         print("record:")
         print("FSPEC:", hex(datablock.contents.record.fspec.fields[0]))
-        for i in range(10):
+        for i in range(12):
             print(f"data_fields[{i}]:", hex(datablock.contents.record.data_fields[i]))
 
         # Free allocated memory
@@ -70,7 +70,7 @@ def create_datablock_from_json(data):
         func.free(datablock)
 
     func.free(time_of_day_ptr)
-    
+
     return datablock
 
 if __name__ == "__main__":
@@ -100,7 +100,7 @@ if __name__ == "__main__":
     print("LEN:", datablock.contents.len)
     print("record:")
     print("FSPEC:", hex(datablock.contents.record.fspec.fields[0]))
-    for i in range(10):
+    for i in range(12):
         print(f"data_fields[{i}]:", hex(datablock.contents.record.data_fields[i]))
 
     # Free allocated memory
