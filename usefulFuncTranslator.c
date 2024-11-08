@@ -2,10 +2,8 @@
 #include <stdio.h>
 #include <string.h>
 
-// Define constants
 #define SIZE_ALL_DATA_FIELDS 20
 
-// Function prototypes
 __uint16_t data_source_id(__uint8_t sac, __uint8_t sic);
 __uint32_t measured_position_polar(__uint32_t rho, __uint32_t theta);
 __uint8_t radial_doppler_speed_prim_sub();
@@ -13,29 +11,27 @@ __uint16_t radial_doppler_speed_calc_doppler_speed(__uint16_t cal);
 __uint8_t *radial_doppler_speed(__uint16_t cal);
 __uint8_t *time_of_day(__uint32_t time);
 
-// Structure definitions
 struct FSPEC {
     __uint8_t FSPEC[3];
 };
 
 struct RECORD_PT {
     struct FSPEC fspec;
-    __uint8_t data_fields[12];  // Adjust the size based on actual data fields
+    __uint8_t data_fields[12];
 };
 
 struct DATABLOCK_PT {
-    __uint8_t cat;  // The CATEGORY of ASTERIX
-    __uint8_t len;  // Length of the datablock, including cat and len
-    struct RECORD_PT record;  // Using one record for now
+    __uint8_t cat;
+    __uint16_t len;
+    struct RECORD_PT record;
 };
 
-// Function implementations
 __uint16_t data_source_id(__uint8_t sac, __uint8_t sic) {
     return (sac << 8) | sic;
 }
 
 __uint32_t measured_position_polar(__uint32_t rho, __uint32_t theta) {
-    return (rho << 16) | (theta & 0xffff)  ;
+    return (rho << 16) | (theta & 0xffff);
 }
 
 __uint8_t radial_doppler_speed_prim_sub() {
@@ -71,8 +67,7 @@ __uint8_t *time_of_day(__uint32_t time) {
     }
     result[0] = time >> 16;
     result[1] = time >> 8;
-    result[2] = time; // By putting a uint32 into uint8 sized memory, it will be troncated to the 8 LSB
-    
+    result[2] = time;
     return result;
 }
 
@@ -82,9 +77,9 @@ struct FSPEC *create_FSPEC() {
         perror("Failed to allocate memory for FSPEC");
         exit(EXIT_FAILURE);
     }
-    fspec->FSPEC[0] = 0x90;
-    fspec->FSPEC[1] = 0x02;
-    fspec->FSPEC[2] = 0x80;
+    fspec->FSPEC[0] = 0x91;
+    fspec->FSPEC[1] = 0x01;
+    fspec->FSPEC[2] = 0xA0;
     return fspec;
 }
 
@@ -99,7 +94,10 @@ struct RECORD_PT *create_record_proposedTranslator(__uint16_t data_source_id, __
     struct FSPEC *fspec = create_FSPEC();
     record->fspec = *fspec;
     free(fspec);
-    
+
+    printf("Data Source ID: %x\n", data_source_id);
+    printf("Measured Position Polar: %x\n", measured_position_polar);
+
     record->data_fields[0] = (__uint8_t)(data_source_id >> 8);
     record->data_fields[1] = (__uint8_t)(data_source_id & 0xFF);
     record->data_fields[2] = (__uint8_t)(measured_position_polar >> 24);
@@ -112,6 +110,10 @@ struct RECORD_PT *create_record_proposedTranslator(__uint16_t data_source_id, __
     record->data_fields[9] = time_of_day[0];
     record->data_fields[10] = time_of_day[1];
     record->data_fields[11] = time_of_day[2];
+
+    for (int i = 0; i < 12; i++) {
+        printf("Data Field[%d]: %x\n", i, record->data_fields[i]);
+    }
     
     return record;
 }

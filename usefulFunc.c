@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-//FSPEC : 10010000000000101000000000
+//FSPEC : 10010001 00000001 10100000
 #define DATA_SOURCE_IDENTIFIER 1 // Needed for json structure encoding
 #define TARGET_REPORT_DESCRIPTOR 2
 #define WARNERR_COND_TGT_CLASSIF 3

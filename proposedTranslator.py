@@ -1,7 +1,7 @@
 from ctypes import *
-from scapy.all import wrpcap, Raw, Ether
-import json
-
+from scapy.all import wrpcap, Raw, Ether, IP, UDP
+import socket
+import struct
 
 # Load the shared library
 so_file = "/home/n0va/Documents/Thales/ASTERIX/usefulFuncTranslator.so"
@@ -9,15 +9,15 @@ func = CDLL(so_file)
 
 # Define the data types for the FSPEC, RECORD_PT, and DATABLOCK_PT structures
 class FSPEC(Structure):
-    _fields_ = [('fields', c_uint8 * 3)]  # Adjust size as needed
+    _fields_ = [('fields', c_uint8 * 3)]
 
 class RECORD_PT(Structure):
     _fields_ = [('fspec', FSPEC),
-                ('data_fields', c_uint8 * 12)]  # Adjust size as needed
+                ('data_fields', c_uint8 * 12)]
 
 class DATABLOCK_PT(Structure):
     _fields_ = [('cat', c_uint8),
-                ('len', c_uint8),
+                ('len', c_uint16),
                 ('record', RECORD_PT)]
 
 # Define return types and argument types for the C functions
@@ -36,87 +36,41 @@ func.time_of_day.argtypes = [c_uint32]
 func.create_datablock_proposedTranslator.restype = POINTER(DATABLOCK_PT)
 func.create_datablock_proposedTranslator.argtypes = [c_uint16, c_uint32, POINTER(c_uint8), POINTER(c_uint8)]
 
-# Function to create a datablock from a JSON file
-def create_datablock_from_json(data):
-    content = data['Content']['tgt']
-    time_stamp_str = content['TimeStamp']
-    time_of_day_seconds = (int(time_stamp_str[:2]) * 3600 + 
-                           int(time_stamp_str[2:4]) * 60 + 
-                           int(time_stamp_str[4:6]))
-    time_of_day_ptr = func.time_of_day(time_of_day_seconds)
-
-    divisor = content['Divisor']
-
-    for tgt in content['data']:
-        data_source_id = func.data_source_id(5, 4)  # Example values for SAC and SIC
-
-        range_ = tgt['Range']
-        azimuth = tgt['Azimuth']
-        speed = tgt['Speed']
-        
-        measured_position_polar = func.measured_position_polar(range_, azimuth)
-        radial_doppler_speed_ptr = func.radial_doppler_speed(speed)
-        
-        # Create the data block
-        datablock = func.create_datablock_proposedTranslator(data_source_id, measured_position_polar, radial_doppler_speed_ptr, time_of_day_ptr)
-
-        # Print or handle the datablock 
-        print("CAT:", datablock.contents.cat)
-        print("LEN:", datablock.contents.len)
-        print("record:")
-        print("FSPEC:", hex(datablock.contents.record.fspec.fields[0]))
-        for i in range(12):
-            print(f"data_fields[{i}]:", hex(datablock.contents.record.data_fields[i]))
-
-        # Free allocated memory
-        func.free(radial_doppler_speed_ptr)
-        func.free(datablock)
-
-    func.free(time_of_day_ptr)
-
-    return datablock
-
-if __name__ == "__main__":
-
-    sac = 5
-    sic = 4
+# Create a function to create the packet
+def create_packet():
+    sac = 0xCA
+    sic = 0xFE
     data_source_id = func.data_source_id(sac, sic)
 
-    rho = 5
-    theta = 5
+    rho = 0xBEEF
+    theta = 0xDEAD
     measured_position_polar = func.measured_position_polar(rho, theta)
 
-    speed = 5
-    radial_doppler_speed_ptr = func.radial_doppler_speed(speed)
+    cal = 0xDEAD
+    radial_doppler_speed_ptr = func.radial_doppler_speed(cal)
+    radial_doppler_speed = bytes(radial_doppler_speed_ptr[:3])
 
-    heure = 5
-    minutes = 5
-    secondes = 5
-    time = heure * 3600 + minutes * 60 + secondes
+    time = 0xDEADBEEF
     time_of_day_ptr = func.time_of_day(time)
+    time_of_day = bytes(time_of_day_ptr[:3])
 
-    # Create the data block
-    datablock = func.create_datablock_proposedTranslator(data_source_id, measured_position_polar, radial_doppler_speed_ptr, time_of_day_ptr)
-    
-    # Trying to save datablock to .pcap file
-    asterix_bytes = bytes(string_at(byref(datablock.contents), sizeof(datablock.contents)))
-    print("taille de datablock : ", len(asterix_bytes))
-    #raw_packet = Raw(load=asterix_bytes)
-    #ether_packet = Ether() / raw_packet
-    with open('datablock.pcap', 'wb') as file:
-        file.write(asterix_bytes)
-    print("Packet saved to asterix_datablock.pcap")
+    datablock_ptr = func.create_datablock_proposedTranslator(data_source_id, measured_position_polar, radial_doppler_speed_ptr, time_of_day_ptr)
+    datablock = datablock_ptr.contents
 
-
-    # Check the created data block
-    print("CAT:", datablock.contents.cat)
-    print("LEN:", datablock.contents.len)
-    print("record:")
-    print("FSPEC:", hex(datablock.contents.record.fspec.fields[0]))
-    for i in range(12):
-        print(f"data_fields[{i}]:", hex(datablock.contents.record.data_fields[i]))
-
-    # Free allocated memory
+    # Free allocated memory for radial_doppler_speed and time_of_day
     func.free(radial_doppler_speed_ptr)
     func.free(time_of_day_ptr)
-    func.free(datablock)
+
+    # Prepare the packet using Scapy
+    eth = Ether(dst="ff:ff:ff:ff:ff:ff", src="00:0c:29:9d:2a:c3", type=0x0800)
+    ip = IP(src="192.168.1.2", dst="192.168.1.255", ttl=64, proto="udp")
+    udp = UDP(sport=15000, dport=47806)
+
+    payload = bytes(datablock)
+    packet = eth / ip / udp / Raw(load=payload)
+
+    return packet
+
+# Write the packet to a pcap file
+packet = create_packet()
+wrpcap('datablock.pcap', [packet])

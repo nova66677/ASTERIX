@@ -94,6 +94,6 @@ void createPacket(struct asterixPacket* asterix, struct ethernet_header* eth_hdr
     memcpy(&asterix->eth_hdr, eth_hdr, sizeof(struct ethernet_header));
     memcpy(&asterix->ip_hdr, ip_hdr, sizeof(struct ipv4_header));
     memcpy(&asterix->udp_hdr, udp_hdr, sizeof(struct udp_header));
-    memcpy(asterix->data, datablock, sizeof(struct DATABLOCK_PT));
+    memcpy(&asterix->data, datablock, sizeof(struct DATABLOCK_PT));
 }
 
